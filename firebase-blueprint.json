@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information, including creator details if applicable.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "creator"] },
+        "bio": { "type": "string" },
+        "whatsappUrl": { "type": "string" },
+        "subscribersCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "A traditional African recipe.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "ingredients": { "type": "array", "items": { "type": "string" } },
+        "steps": { "type": "array", "items": { "type": "string" } },
+        "tips": { "type": "string" },
+        "isPremium": { "type": "boolean" },
+        "creatorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "views": { "type": "number" },
+        "saves": { "type": "number" },
+        "emoji": { "type": "string" },
+        "region": { "type": "string" }
+      },
+      "required": ["title", "creatorId", "isPremium"]
+    },
+    "MarketItem": {
+      "title": "Marketplace Item",
+      "description": "An item listed for sale in the spice marketplace.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "emoji": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "sellerId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and creator accounts."
+    },
+    "recipes/{recipeId}": {
+      "schema": "Recipe",
+      "description": "Public and premium recipes."
+    },
+    "marketplace/{itemId}": {
+      "schema": "MarketItem",
+      "description": "Items for sale in the marketplace."
+    }
+  }
+}

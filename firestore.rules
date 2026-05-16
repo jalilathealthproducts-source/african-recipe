@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isVerified() { return request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- User Validation ---
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.email is string && data.email.size() <= 100
+        && data.role in ['user', 'creator']
+        && (data.get('displayName', null) == null || (data.displayName is string && data.displayName.size() <= 100))
+        && (data.get('photoURL', null) == null || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && (data.get('whatsappUrl', null) == null || (data.whatsappUrl is string && data.whatsappUrl.size() <= 200))
+        && (data.get('bio', null) == null || (data.bio is string && data.bio.size() <= 1000));
+    }
+
+    // --- Recipe Validation ---
+    function isValidRecipe(data) {
+      return data.creatorId == request.auth.uid
+        && data.title is string && data.title.size() <= 100
+        && data.isPremium is bool
+        && (data.emoji == null || (data.emoji is string && data.emoji.size() <= 10))
+        && (data.ingredients == null || data.ingredients is list)
+        && (data.steps == null || data.steps is list);
+    }
+
+    // --- Marketplace Validation ---
+    function isValidMarketItem(data) {
+      return data.sellerId == request.auth.uid
+        && data.name is string && data.name.size() <= 100
+        && data.price is string && data.price.size() <= 50;
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.role == 'creator';
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().createdAt == request.time;
+      allow update: if isOwner(userId) && isValidUser(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'bio', 'role', 'subscribersCount', 'whatsappUrl']);
+    }
+
+    match /recipes/{recipeId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidRecipe(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isOwner(existing().creatorId) && isValidRecipe(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'videoUrl', 'ingredients', 'steps', 'tips', 'isPremium', 'updatedAt', 'views', 'saves', 'emoji', 'region']);
+      allow delete: if isSignedIn() && isOwner(existing().creatorId);
+    }
+
+    match /marketplace/{itemId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidMarketItem(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isOwner(existing().sellerId) && isValidMarketItem(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'price', 'emoji', 'category']);
+      allow delete: if isSignedIn() && isOwner(existing().sellerId);
+    }
+  }
+}
